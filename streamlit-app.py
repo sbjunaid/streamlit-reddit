@@ -10,7 +10,7 @@ import base64
 from streamlit_option_menu import option_menu
 import os
 from streamlit_cropper import st_cropper
-
+import re
 
 st.set_page_config(layout="wide")
 
@@ -27,15 +27,6 @@ firebaseConfig = {
 }
 
 
-
-import firebase_admin
-from firebase_admin import credentials
-
-cred = credentials.Certificate("path/to/serviceAccountKey.json")
-firebase_admin.initialize_app(cred)
-
-
-
 # Firebase Authentication
 firebase = pyrebase.initialize_app(firebaseConfig)
 auth = firebase.auth()
@@ -49,13 +40,14 @@ db = firebase.database()
 storage = firebase.storage()
 
 # Authentication
-choice = st.sidebar.selectbox('login/Signup', ['Login', 'Sign up'])
+choice = st.sidebar.selectbox('login/Signup', ['--Select--','Login', 'Sign up'])
 
 # Obtain User Input for email and password
 email = st.sidebar.text_input('Please enter your email address')
 password = st.sidebar.text_input('Please enter your password', type='password')
-st.sidebar.warning("Password must be of Six or more letters.")
+st.sidebar.info("Password must be of Six or more letters.")
 # App
+
 
 
 def cartoonization(img, cartoon):
@@ -162,16 +154,30 @@ def get_image_download_link(img,filename,text):
     img_str = base64.b64encode(buffered.getvalue()).decode()
     href =  f'<a href="data:file/txt;base64,{img_str}" download="{filename}">{text}</a>'
     return href
+if choice == '--Select--':
+    st.title("Welcome to Comicmage ")
+    st.header('Please Signup or Login')
 
 # Sign up Block
 if choice == 'Sign up':
     handle = st.sidebar.text_input('Please input your name', value='Default')
     submit = st.sidebar.button('Create my account')
-        
+    e=1
     
 
     if submit:
         try:
+            regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+            if(re.fullmatch(regex, email)):
+                print("Valid Email")
+            else:
+                st.warning("Invalid Email")
+                e=0
+            if len(password) >=6:
+                print("valid Password")
+            else:
+                st.warning("Invalid Password")
+                e=0
             user = auth.create_user_with_email_and_password(email, password)  
             st.success('Your account is created suceesfully!')
             st.balloons()
@@ -182,16 +188,27 @@ if choice == 'Sign up':
             st.title('Welcome ' + handle)
             st.info('Login via login drop down selection')
         except:
-            st.warning("Email is already in use.")
-            st.info('Enter a new email address or password.')
-            # print("Email is already in use.")
-            # print("Enter a new email address or password.")
+            if e==1:
+                st.warning("Email is already in use.")
+            
 
 # Login Block
 if choice == 'Login':
     login = st.sidebar.checkbox('Login')
     if login:
-        
+        e=1
+        try:
+            regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+            if(re.fullmatch(regex, email)):
+                print("Valid Email")
+            else:
+                st.warning("Invalid Email")
+                e=0
+            if len(password) >=6:
+                print("valid Password")
+            else:
+                st.warning("Invalid Password")
+                e=0
             user = auth.sign_in_with_email_and_password(email, password)
             # if user:
             #     print("Account is logged in")
@@ -223,7 +240,7 @@ if choice == 'Login':
                             fireb_upload = storage.child(uid).put(upload_new,user['idToken'])
                             a_imgdata_url = storage.child(uid).get_url(fireb_upload['downloadTokens']) 
                             db.child(user['localId']).child("Image").push(a_imgdata_url)
-                            st.success('Success!')           
+                            st.success('Success!')       
                             # print("Profile successfully Updated.")
                 # IF THERE IS NO IMAGE
                 else:    
@@ -239,6 +256,7 @@ if choice == 'Login':
                         # Put it in our real time database
                         db.child(user['localId']).child("Image").push(a_imgdata_url)
                         st.success('Success!')
+                
     # ImageCartoon
             elif bio == "ImageCartoon":
                 file = st.file_uploader("Please upload an image file", type=["jpg", "png"])
@@ -332,7 +350,6 @@ if choice == 'Login':
     #Webcam
             elif bio=='Webcam':
                 img_file_buffer = st.camera_input("Take a Photo")
-                
                 if img_file_buffer is not None:
                     # To read image file buffer with OpenCV:
                     st.subheader("Cartoonify Image")
@@ -492,7 +509,21 @@ if choice == 'Login':
                                             st.caption((Posts.val())["Date"])
                                             st.caption((Posts.val())["Time"])
                                     st.markdown("---")
-        
+            
+
+        except:
+            if e==1:
+                st.warning("Error")
+
+
+
+hide_menu_style = """
+        <style>
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        </style>
+        """
+st.markdown(hide_menu_style, unsafe_allow_html=True)
 
 
 
